@@ -4,11 +4,15 @@ import { useEffect, useRef, useState } from "react"
 import mapboxgl from "mapbox-gl"
 import MapboxLanguage from "@mapbox/mapbox-gl-language"
 import "mapbox-gl/dist/mapbox-gl.css"
-import type { Coordinates, POI, RouteInfo } from "@/types/map"
+// Services
 import { mapService } from "@/services/mapService"
+import { getLocation } from "@/services/geolocation"
+// Components
 import MapControls from "./MapControls"
 import POIPanel from "./POIPanel"
 import PanelToggle from "./PanelToggle"
+
+import type { Coordinates, POI, RouteInfo } from "@/types/map"
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ""
 
@@ -24,7 +28,7 @@ export default function MapContainer() {
   const [selectedPoi, setSelectedPoi] = useState<POI | null>(null)
   const [isPanelOpen, setIsPanelOpen] = useState<boolean>(false)
 
-  const destination: Coordinates = { lng: 139.7670516, lat: 35.6811673 } // 東京駅
+  const [destination, setDestination] = useState<Coordinates>({lng: 139.7670516, lat: 35.6811673})
 
   const drawRoute = async () => {
     if (!map || !markerRef.current) return
@@ -83,8 +87,8 @@ export default function MapContainer() {
       poiMarkers.current = []
 
       // POIを検索
-      const foundPois = await mapService.searchPOIs({
-        query: "イオンモール",
+      const foundPois = await mapService.searchCategory({
+        query: "supermarket",
         radius: searchRadius,
         center: centerCoords,
       })
@@ -149,6 +153,13 @@ export default function MapContainer() {
 
   useEffect(() => {
     if (map) return
+
+    const fetchLocation = async () => {
+      const loc = await getLocation();
+      console.log(loc)
+    }
+
+    fetchLocation()
 
     const initMap = new mapboxgl.Map({
       container: mapContainer.current!,
