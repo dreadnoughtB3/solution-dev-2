@@ -4,11 +4,15 @@ import { useEffect, useRef, useState } from "react"
 import mapboxgl from "mapbox-gl"
 import MapboxLanguage from "@mapbox/mapbox-gl-language"
 import "mapbox-gl/dist/mapbox-gl.css"
-import type { Coordinates, POI, RouteInfo } from "@/types/map"
+// Services
 import { mapService } from "@/services/mapService"
+import { getLocation } from "@/services/geolocation"
+// Components
 import MapControls from "./MapControls"
 import POIPanel from "./POIPanel"
 import PanelToggle from "./PanelToggle"
+
+import type { Coordinates, POI, RouteInfo } from "@/types/map"
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ""
 
@@ -23,8 +27,9 @@ export default function MapContainer() {
   const [pois, setPois] = useState<POI[]>([])
   const [selectedPoi, setSelectedPoi] = useState<POI | null>(null)
   const [isPanelOpen, setIsPanelOpen] = useState<boolean>(false)
+  const [isLoading, setIsLoading] = useState<boolean>(true)
 
-  const destination: Coordinates = { lng: 139.7670516, lat: 35.6811673 } // 東京駅
+  const [destination, setDestination] = useState<Coordinates>({lng: 139.7670516, lat: 35.6811673})
 
   const drawRoute = async () => {
     if (!map || !markerRef.current) return
@@ -83,8 +88,8 @@ export default function MapContainer() {
       poiMarkers.current = []
 
       // POIを検索
-      const foundPois = await mapService.searchPOIs({
-        query: "イオンモール",
+      const foundPois = await mapService.searchCategory({
+        query: "supermarket",
         radius: searchRadius,
         center: centerCoords,
       })
@@ -150,25 +155,41 @@ export default function MapContainer() {
   useEffect(() => {
     if (map) return
 
-    const initMap = new mapboxgl.Map({
-      container: mapContainer.current!,
-      center: [destination.lng, destination.lat],
-      zoom: 12,
-      style: "mapbox://styles/mapbox/streets-v12",
-    })
+    const fetchLocationAndSetLoading = async () => {
+      try {
+        const res = await getLocation();
+        console.log('取得した位置情報:', res);
+        setDestination({lng: res.lng, lat: res.lat})
+      } catch (error) {
+        console.error('位置情報の取得に失敗しました:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-    const language = new MapboxLanguage({ defaultLanguage: "ja" })
-    initMap.addControl(language)
+    fetchLocationAndSetLoading();
 
-    const startMarker = new mapboxgl.Marker({ draggable: true }).setLngLat([139.76, 35.676]).addTo(initMap)
+    if (!isLoading) {
+      const initMap = new mapboxgl.Map({
+        container: mapContainer.current!,
+        center: [destination.lng, destination.lat],
+        zoom: 12,
+        style: "mapbox://styles/mapbox/streets-v12",
+      })
 
-    markerRef.current = startMarker
+      const language = new MapboxLanguage({ defaultLanguage: "ja" })
+      initMap.addControl(language)
 
-    initMap.on("load", () => {
-      setMap(initMap)
-      initMap.resize()
-    })
-  }, [])
+      const startMarker = new mapboxgl.Marker({ draggable: true }).setLngLat([destination.lng, destination.lat]).addTo(initMap)
+
+      markerRef.current = startMarker
+
+      initMap.on("load", () => {
+        setMap(initMap)
+        initMap.resize()
+      })
+    }
+  }, [isLoading])
 
   useEffect(() => {
     if (!map || !markerRef.current) return
@@ -183,33 +204,37 @@ export default function MapContainer() {
     setIsPanelOpen(!isPanelOpen)
   }
 
-  return (
-    <div className="relative w-full h-screen">
-      {/* マップは常に画面全体を占める */}
-      <div className="absolute inset-0">
-        <div ref={mapContainer} className="w-full h-full" />
+  if(isLoading) {
+    return <div>Now Loading...</div>
+  } else {
+    return (
+      <div className="relative w-full h-screen">
+        {/* マップは常に画面全体を占める */}
+        <div className="absolute inset-0">
+          <div ref={mapContainer} className="w-full h-full" />
+        </div>
+
+        {/* マップコントロール */}
+        <MapControls
+          searchRadius={searchRadius}
+          setSearchRadius={setSearchRadius}
+          onDrawRoute={drawRoute}
+          onSearchPOIs={searchPOIs}
+          routeInfo={routeInfo}
+        />
+
+        {/* パネルトグルボタン - 常に表示 */}
+        <PanelToggle isOpen={isPanelOpen} onClick={togglePanel} />
+
+        {/* POIパネル - マップの上にオーバーレイ */}
+        <POIPanel
+          isOpen={isPanelOpen}
+          onClose={() => setIsPanelOpen(false)}
+          pois={pois}
+          selectedPoi={selectedPoi}
+          onSelectPoi={setSelectedPoi}
+        />
       </div>
-
-      {/* マップコントロール */}
-      <MapControls
-        searchRadius={searchRadius}
-        setSearchRadius={setSearchRadius}
-        onDrawRoute={drawRoute}
-        onSearchPOIs={searchPOIs}
-        routeInfo={routeInfo}
-      />
-
-      {/* パネルトグルボタン - 常に表示 */}
-      <PanelToggle isOpen={isPanelOpen} onClick={togglePanel} />
-
-      {/* POIパネル - マップの上にオーバーレイ */}
-      <POIPanel
-        isOpen={isPanelOpen}
-        onClose={() => setIsPanelOpen(false)}
-        pois={pois}
-        selectedPoi={selectedPoi}
-        onSelectPoi={setSelectedPoi}
-      />
-    </div>
-  )
+    )
+  }
 }

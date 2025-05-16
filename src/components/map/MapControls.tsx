@@ -44,7 +44,7 @@ export default function MapControls({
             onClick={onSearchPOIs}
             className="px-4 py-2.5 bg-amber-500 text-white border-none rounded-md cursor-pointer hover:bg-amber-600 transition-colors"
           >
-            イオンモールを検索
+            スーパーを検索
           </button>
         </div>
       </div>

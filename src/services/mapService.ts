@@ -1,4 +1,4 @@
-import type { Coordinates, POI, RouteInfo, SearchOptions } from "@/types/map"
+import type { Coordinates, POI, RouteInfo, SearchOptions, CategorySearchFeature } from "@/types/map"
 
 export class MapService {
   private accessToken: string
@@ -7,6 +7,7 @@ export class MapService {
     this.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ""
   }
 
+  // 経路探索API
   async getRoute(
     origin: Coordinates,
     destination: Coordinates,
@@ -32,6 +33,7 @@ export class MapService {
     }
   }
 
+  // 通常検索API
   async searchPOIs(options: SearchOptions): Promise<POI[]> {
     const { query, radius, center } = options
     const sessionToken = crypto.randomUUID()
@@ -88,6 +90,48 @@ export class MapService {
     }
 
     return pois
+  }
+
+  // カテゴリ検索API
+  async searchCategory(options: SearchOptions): Promise<POI[]> {
+    const { query, radius, center } = options
+  
+    const lat = center.lat
+    const lon = center.lng
+  
+    const deltaLat = radius / 111
+    const deltaLng = radius / (111 * Math.cos((lat * Math.PI) / 180))
+  
+    const bbox = [
+      (lon - deltaLng).toFixed(6),
+      (lat - deltaLat).toFixed(6),
+      (lon + deltaLng).toFixed(6),
+      (lat + deltaLat).toFixed(6),
+    ].join("%2C")
+  
+    const res = await fetch(
+      `https://api.mapbox.com/search/searchbox/v1/category/${query}?proximity=${lon}%2C${lat}&bbox=${bbox}&limit=25&language=ja&access_token=${this.accessToken}`
+    )
+  
+    const data: { features: CategorySearchFeature[] } = await res.json()
+  
+    if (!data.features || data.features.length === 0) {
+      return []
+    }
+  
+    return data.features.map((feature): POI => {
+      const mapbox_id = feature.properties.mapbox_id
+      const [lng, lat] = feature.geometry.coordinates
+      const name = feature.properties.name ?? query
+      const address = feature.properties.address ?? feature.properties.full_address
+  
+      return {
+        id: mapbox_id || crypto.randomUUID(),
+        name,
+        coordinates: { lng, lat },
+        address
+      }
+    })
   }
 
   calculateSearchBbox(center: Coordinates, radiusKm: number): GeoJSON.Feature<GeoJSON.Polygon> {
