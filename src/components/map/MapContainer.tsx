@@ -27,6 +27,7 @@ export default function MapContainer() {
   const [pois, setPois] = useState<POI[]>([])
   const [selectedPoi, setSelectedPoi] = useState<POI | null>(null)
   const [isPanelOpen, setIsPanelOpen] = useState<boolean>(false)
+  const [isLoading, setIsLoading] = useState<boolean>(true)
 
   const [destination, setDestination] = useState<Coordinates>({lng: 139.7670516, lat: 35.6811673})
 
@@ -154,32 +155,41 @@ export default function MapContainer() {
   useEffect(() => {
     if (map) return
 
-    const fetchLocation = async () => {
-      const loc = await getLocation();
-      console.log(loc)
+    const fetchLocationAndSetLoading = async () => {
+      try {
+        const res = await getLocation();
+        console.log('取得した位置情報:', res);
+        setDestination({lng: res.lng, lat: res.lat})
+      } catch (error) {
+        console.error('位置情報の取得に失敗しました:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchLocationAndSetLoading();
+
+    if (!isLoading) {
+      const initMap = new mapboxgl.Map({
+        container: mapContainer.current!,
+        center: [destination.lng, destination.lat],
+        zoom: 12,
+        style: "mapbox://styles/mapbox/streets-v12",
+      })
+
+      const language = new MapboxLanguage({ defaultLanguage: "ja" })
+      initMap.addControl(language)
+
+      const startMarker = new mapboxgl.Marker({ draggable: true }).setLngLat([destination.lng, destination.lat]).addTo(initMap)
+
+      markerRef.current = startMarker
+
+      initMap.on("load", () => {
+        setMap(initMap)
+        initMap.resize()
+      })
     }
-
-    fetchLocation()
-
-    const initMap = new mapboxgl.Map({
-      container: mapContainer.current!,
-      center: [destination.lng, destination.lat],
-      zoom: 12,
-      style: "mapbox://styles/mapbox/streets-v12",
-    })
-
-    const language = new MapboxLanguage({ defaultLanguage: "ja" })
-    initMap.addControl(language)
-
-    const startMarker = new mapboxgl.Marker({ draggable: true }).setLngLat([139.76, 35.676]).addTo(initMap)
-
-    markerRef.current = startMarker
-
-    initMap.on("load", () => {
-      setMap(initMap)
-      initMap.resize()
-    })
-  }, [])
+  }, [isLoading])
 
   useEffect(() => {
     if (!map || !markerRef.current) return
@@ -194,33 +204,37 @@ export default function MapContainer() {
     setIsPanelOpen(!isPanelOpen)
   }
 
-  return (
-    <div className="relative w-full h-screen">
-      {/* マップは常に画面全体を占める */}
-      <div className="absolute inset-0">
-        <div ref={mapContainer} className="w-full h-full" />
+  if(isLoading) {
+    return <div>Now Loading...</div>
+  } else {
+    return (
+      <div className="relative w-full h-screen">
+        {/* マップは常に画面全体を占める */}
+        <div className="absolute inset-0">
+          <div ref={mapContainer} className="w-full h-full" />
+        </div>
+
+        {/* マップコントロール */}
+        <MapControls
+          searchRadius={searchRadius}
+          setSearchRadius={setSearchRadius}
+          onDrawRoute={drawRoute}
+          onSearchPOIs={searchPOIs}
+          routeInfo={routeInfo}
+        />
+
+        {/* パネルトグルボタン - 常に表示 */}
+        <PanelToggle isOpen={isPanelOpen} onClick={togglePanel} />
+
+        {/* POIパネル - マップの上にオーバーレイ */}
+        <POIPanel
+          isOpen={isPanelOpen}
+          onClose={() => setIsPanelOpen(false)}
+          pois={pois}
+          selectedPoi={selectedPoi}
+          onSelectPoi={setSelectedPoi}
+        />
       </div>
-
-      {/* マップコントロール */}
-      <MapControls
-        searchRadius={searchRadius}
-        setSearchRadius={setSearchRadius}
-        onDrawRoute={drawRoute}
-        onSearchPOIs={searchPOIs}
-        routeInfo={routeInfo}
-      />
-
-      {/* パネルトグルボタン - 常に表示 */}
-      <PanelToggle isOpen={isPanelOpen} onClick={togglePanel} />
-
-      {/* POIパネル - マップの上にオーバーレイ */}
-      <POIPanel
-        isOpen={isPanelOpen}
-        onClose={() => setIsPanelOpen(false)}
-        pois={pois}
-        selectedPoi={selectedPoi}
-        onSelectPoi={setSelectedPoi}
-      />
-    </div>
-  )
+    )
+  }
 }
