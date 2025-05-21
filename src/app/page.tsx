@@ -1,11 +1,7 @@
-import Map from "@/components/Map"
+import MapContainer from "@/components/map/MapContainer";
 
 export default function Home() {
   return (
-    <div>
-      <div className="h-screen">
-        <Map />
-      </div>
-    </div>
+    <MapContainer />
   );
 }
