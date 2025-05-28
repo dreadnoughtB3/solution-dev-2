@@ -135,9 +135,9 @@ export class MapService {
     })
   }
 
-  async getIsochroneAPI(center: Coordinates, minutes: number) {
+  async getIsochroneAPI(center: Coordinates, minutes: number, mode: string) {
     const res = await fetch(
-      `https://api.mapbox.com/isochrone/v1/mapbox/driving-traffic/${center.lng},${center.lat}?contours_minutes=${minutes}&polygons=true&denoise=1&access_token=${this.accessToken}`
+      `https://api.mapbox.com/isochrone/v1/mapbox/${mode}/${center.lng},${center.lat}?contours_minutes=${minutes}&polygons=true&denoise=1&access_token=${this.accessToken}`
     )
 
     const data: MapboxIsochroneApiResponse = await res.json()

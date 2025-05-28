@@ -23,10 +23,11 @@ export default function MapContainer() {
 
   const [map, setMap] = useState<mapboxgl.Map | null>(null)
   const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null)
-  const [searchRadius, setSearchRadius] = useState<number>(15)
+  const [contourMinute, setContourMinute] = useState<number>(10)
   const [pois, setPois] = useState<POI[]>([])
   const [selectedPoi, setSelectedPoi] = useState<POI | null>(null)
   const [isPanelOpen, setIsPanelOpen] = useState<boolean>(false)
+  const [routingProfile, setRoutingProfile] = useState<string>("driving")
 
   const drawRoute = async () => {
     if (!map || !markerRef.current) return
@@ -86,7 +87,7 @@ export default function MapContainer() {
       // POIを検索
       const foundPois = await mapService.searchCategory({
         query: "supermarket",
-        radius: searchRadius,
+        radius: 15,
         center: centerCoords,
       })
 
@@ -127,9 +128,7 @@ export default function MapContainer() {
 
     const center = markerRef.current.getLngLat()
     const centerCoords: Coordinates = { lng: center.lng, lat: center.lat }
-
-    const isochroneGeoJson = await mapService.getIsochroneAPI(centerCoords, 5)
-    console.log(isochroneGeoJson)
+    const isochroneGeoJson = await mapService.getIsochroneAPI(centerCoords, contourMinute, routingProfile)
 
     map.addSource('isochrones', {
       type: 'geojson',
@@ -151,26 +150,6 @@ export default function MapContainer() {
         'fill-opacity': 0.3, // 透明度
       },
     });
-
-    // const source = map.getSource("search-radius")
-    // if (source && "setData" in source) {
-    //   ;(source as mapboxgl.GeoJSONSource).setData(geojsonBbox)
-    // } else {
-    //   map.addSource("search-radius", {
-    //     type: "geojson",
-    //     data: geojsonBbox,
-    //   })
-
-    //   map.addLayer({
-    //     id: "search-radius",
-    //     type: "fill",
-    //     source: "search-radius",
-    //     paint: {
-    //       "fill-color": "#93c5fd",
-    //       "fill-opacity": 0.3,
-    //     },
-    //   })
-    // }
   }
 
   // 地図描画
@@ -220,9 +199,8 @@ export default function MapContainer() {
 
       {/* マップコントロール */}
       <MapControls
-        searchRadius={searchRadius}
-        setSearchRadius={setSearchRadius}
-        onDrawRoute={drawRoute}
+        contourMinute={contourMinute}
+        setContourMinute={setContourMinute}
         onSearchPOIs={searchPOIs}
         routeInfo={routeInfo}
       />
