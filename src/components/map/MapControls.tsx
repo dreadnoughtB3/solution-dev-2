@@ -1,11 +1,15 @@
 "use client"
 
+import type { RouteInfo } from "@/types/map"
+
 interface MapControlsProps {
   routingProfle: string
   contourMinute: number
   setRoutingProfile: (profile: string) => void
   setContourMinute: (radius: number) => void
+  onDrawRoute: () => void
   onSearchPOIs: () => void
+  routeInfo: RouteInfo | null
 }
 
 const profileList = [{label: "運転", value: "driving"}, {label: "徒歩", value: "walking"}, {label: "自転車", value: "cycling"}]
@@ -15,7 +19,9 @@ export default function MapControls({
   contourMinute,
   setRoutingProfile,
   setContourMinute,
+  onDrawRoute,
   onSearchPOIs,
+  routeInfo,
 }: MapControlsProps) {
   return (
     <>
@@ -55,6 +61,13 @@ export default function MapControls({
           </div>
 
           <button
+            onClick={onDrawRoute}
+            className="px-4 py-2.5 bg-blue-600 text-white border-none rounded-md cursor-pointer hover:bg-blue-700 transition-colors"
+          >
+            東京駅までのルートを表示
+          </button>
+
+          <button
             onClick={onSearchPOIs}
             className="px-4 py-2.5 bg-amber-500 text-white border-none rounded-md cursor-pointer hover:bg-amber-600 transition-colors"
           >
@@ -62,6 +75,13 @@ export default function MapControls({
           </button>
         </div>
       </div>
+
+      {routeInfo && (
+        <div className="absolute top-[180px] left-5 p-3 bg-white/90 rounded-lg shadow-md z-10 text-sm">
+          <div>距離: {routeInfo.distance} km</div>
+          <div>時間: {routeInfo.duration} 分</div>
+        </div>
+      )}
     </>
   )
 }

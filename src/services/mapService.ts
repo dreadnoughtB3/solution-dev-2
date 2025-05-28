@@ -11,20 +11,42 @@ export class MapService {
   // 経路探索API
   async getRoute(
     origin: Coordinates,
-    destination: Coordinates,
-  ): Promise<{
-    route: GeoJSON.Feature<GeoJSON.Geometry>
-    routeInfo: RouteInfo
-  }> {
+    destination: Coordinates
+  ): Promise<{ distance: number; duration: number }> {
     const from = `${origin.lng},${origin.lat}`
     const to = `${destination.lng},${destination.lat}`
-
     const query = await fetch(
-      `https://api.mapbox.com/directions/v5/mapbox/driving/${from};${to}?geometries=geojson&access_token=${this.accessToken}`,
+      `https://api.mapbox.com/directions/v5/mapbox/driving/${from};${to}?geometries=geojson&overview=false&access_token=${this.accessToken}`,
     )
+
+    if (!query.ok) {
+      throw new Error("ルート情報の取得に失敗しました")
+    }
+
+    const data = await query.json()
+    const distance = Number.parseFloat((data.routes[0].distance / 1000).toFixed(2)) // km
+    const duration = Math.round(data.routes[0].duration / 60) // 分
+
+    return { distance, duration }
+  }
+
+  // 距離・時間 + geometry を取得
+  async getRouteWithGeometry(
+    origin: Coordinates,
+    destination: Coordinates
+  ): Promise<{ route: GeoJSON.Geometry; routeInfo: RouteInfo }> {
+    const from = `${origin.lng},${origin.lat}`
+    const to = `${destination.lng},${destination.lat}`
+    const query = await fetch(
+      `https://api.mapbox.com/directions/v5/mapbox/driving/${from};${to}?geometries=geojson&access_token=${this.accessToken}`
+    )
+
+    if (!query.ok) {
+      throw new Error("ルート情報の取得に失敗しました")
+    }
+
     const data = await query.json()
     const route = data.routes[0].geometry
-
     const distance = Number.parseFloat((data.routes[0].distance / 1000).toFixed(2))
     const duration = Number.parseFloat((data.routes[0].duration / 60).toFixed(1))
 
@@ -39,7 +61,6 @@ export class MapService {
     const { query, radius, center } = options
     const sessionToken = crypto.randomUUID()
 
-    // Bounding Box計算
     const radiusKm = radius
     const lat = center.lat
     const lon = center.lng
@@ -54,9 +75,8 @@ export class MapService {
       (lat + deltaLat).toFixed(6),
     ].join(",")
 
-    // Search Box APIリクエスト
     const suggestRes = await fetch(
-      `https://api.mapbox.com/search/searchbox/v1/suggest?q=${query}&proximity=${lon},${lat}&bbox=${bbox}&limit=10&language=ja&access_token=${this.accessToken}&session_token=${sessionToken}`,
+      `https://api.mapbox.com/search/searchbox/v1/suggest?q=${query}&proximity=${lon},${lat}&bbox=${bbox}&limit=10&language=ja&access_token=${this.accessToken}&session_token=${sessionToken}`
     )
 
     const suggestData = await suggestRes.json()
@@ -66,10 +86,9 @@ export class MapService {
 
     const pois: POI[] = []
 
-    // 各提案の詳細を取得
     for (const suggestion of suggestData.suggestions) {
       const retrieveRes = await fetch(
-        `https://api.mapbox.com/search/searchbox/v1/retrieve/${suggestion.mapbox_id}?session_token=${sessionToken}&access_token=${this.accessToken}`,
+        `https://api.mapbox.com/search/searchbox/v1/retrieve/${suggestion.mapbox_id}?session_token=${sessionToken}&access_token=${this.accessToken}`
       )
       const retrieveData = await retrieveRes.json()
 
