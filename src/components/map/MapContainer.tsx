@@ -11,7 +11,7 @@ import MapControls from "./MapControls"
 import POIPanel from "./POIPanel"
 import PanelToggle from "./PanelToggle"
 
-import type { Coordinates, POI, RouteInfo } from "@/types/map"
+import type { Coordinates, POI } from "@/types/map"
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ""
 
@@ -22,54 +22,11 @@ export default function MapContainer() {
   const initLocation = {lng: 139.6969226, lat: 35.691595}
 
   const [map, setMap] = useState<mapboxgl.Map | null>(null)
-  const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null)
   const [contourMinute, setContourMinute] = useState<number>(10)
   const [pois, setPois] = useState<POI[]>([])
   const [selectedPoi, setSelectedPoi] = useState<POI | null>(null)
   const [isPanelOpen, setIsPanelOpen] = useState<boolean>(false)
   const [routingProfile, setRoutingProfile] = useState<string>("driving")
-
-  const drawRoute = async () => {
-    if (!map || !markerRef.current) return
-
-    const origin = markerRef.current.getLngLat()
-    const originCoords: Coordinates = { lng: origin.lng, lat: origin.lat }
-
-    try {
-      const { route, routeInfo } = await mapService.getRoute(originCoords, initLocation)
-      setRouteInfo(routeInfo)
-
-      if (map.getSource("route")) {
-        map.removeLayer("route")
-        map.removeSource("route")
-      }
-
-      map.addSource("route", {
-        type: "geojson",
-        data: {
-          type: "Feature",
-          properties: {},
-          geometry: route.geometry,
-        },
-      })
-
-      map.addLayer({
-        id: "route",
-        type: "line",
-        source: "route",
-        layout: {
-          "line-join": "round",
-          "line-cap": "round",
-        },
-        paint: {
-          "line-color": "#10b981",
-          "line-width": 5,
-        },
-      })
-    } catch (error) {
-      console.error("ルート取得エラー:", error)
-    }
-  }
 
   const searchPOIs = async () => {
     if (!map || !markerRef.current) return
@@ -176,16 +133,6 @@ export default function MapContainer() {
     }
   }, [])
 
-  // 検索範囲描画
-  // useEffect(() => {
-  //   if (!map || !markerRef.current) return
-
-  //   const source = map.getSource("search-radius")
-  //   if (source) {
-  //     drawSearchBbox()
-  //   }
-  // }, [searchRadius])
-
   const togglePanel = () => {
     setIsPanelOpen(!isPanelOpen)
   }
@@ -204,7 +151,6 @@ export default function MapContainer() {
         setContourMinute={setContourMinute}
         setRoutingProfile={setRoutingProfile}
         onSearchPOIs={searchPOIs}
-        routeInfo={routeInfo}
       />
 
       {/* パネルトグルボタン - 常に表示 */}
