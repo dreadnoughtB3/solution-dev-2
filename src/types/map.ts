@@ -15,6 +15,8 @@ export interface POI {
   address?: string
   category?: string
   description?: string
+  distance?: number
+  duration?: number
 }
   
 export interface SearchOptions {

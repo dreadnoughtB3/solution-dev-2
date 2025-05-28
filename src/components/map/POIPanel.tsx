@@ -12,29 +12,17 @@ interface POIPanelProps {
   onSelectPoi: (poi: POI | null) => void
 }
 
+const COST_PER_KM = 8.41 // ガソリン代換算コスト
+
 export default function POIPanel({ isOpen, onClose, pois, selectedPoi, onSelectPoi }: POIPanelProps) {
-  // タブの状態（検索結果 / 商品比較表）
   const [activeTab, setActiveTab] = useState<"results" | "others">("results")
-
-  // スーパー名のリスト
-  const [storeNames, setStoreNames] = useState(["スーパーA", "スーパーB", "スーパーC"])
-
-  // 商品とその価格データ
-  const [products, setProducts] = useState<{ name: string; prices: (number | "")[] }[]>([
-    { name: "レタス", prices: [300, 310, 298] },
-    { name: "肉", prices: [265, 270, 260] },
-    { name: "卵", prices: [320, 290, 300] },
-    { name: "牛乳", prices: [253, 253, 256] }
-  ])
-
-  // 入力中の新しい商品名
+  const [storeNames, setStoreNames] = useState<string[]>([])
+  const [products, setProducts] = useState<{ name: string; prices: (number | "")[] }[]>([])
   const [newProductName, setNewProductName] = useState("")
 
-  // 新しいスーパーを追加する（選択されたPOI名）
   const handleAddStore = (storeName: string) => {
     if (!storeNames.includes(storeName)) {
       setStoreNames([...storeNames, storeName])
-      // 各商品に新しいスーパー分の価格列（初期値0）を追加
       setProducts(products.map(product => ({
         ...product,
         prices: [...product.prices, 0]
@@ -42,22 +30,16 @@ export default function POIPanel({ isOpen, onClose, pois, selectedPoi, onSelectP
     }
   }
 
-  // 新しい商品を追加する
   const handleAddProduct = () => {
     if (newProductName.trim() === "") return
-    setProducts([
-      ...products,
-      { name: newProductName.trim(), prices: storeNames.map(() => 0) }
-    ])
+    setProducts([...products, { name: newProductName.trim(), prices: storeNames.map(() => 0) }])
     setNewProductName("")
   }
 
-  // 商品を削除
   const handleDeleteProduct = (index: number) => {
     setProducts(products.filter((_, i) => i !== index))
   }
 
-  // スーパーを削除（列を削除）
   const handleDeleteStore = (storeIndex: number) => {
     setStoreNames(prev => prev.filter((_, i) => i !== storeIndex))
     setProducts(prev =>
@@ -68,7 +50,6 @@ export default function POIPanel({ isOpen, onClose, pois, selectedPoi, onSelectP
     )
   }
 
-  // 商品価格の変更
   const handlePriceChange = (productIndex: number, storeIndex: number, value: string) => {
     const newProducts = [...products]
     const price = value === "" ? "" : Number(value)
@@ -76,26 +57,26 @@ export default function POIPanel({ isOpen, onClose, pois, selectedPoi, onSelectP
     setProducts(newProducts)
   }
 
-  // 各スーパーの合計金額を計算し、最も安い店舗のインデックスを返す
-  const getCheapestIndex = () => {
-    const totals = storeNames.map((_, idx) =>
-      products.reduce((sum, p) => {
+  const getCheapestIndexWithGas = () => {
+    const totals = storeNames.map((_, idx) => {
+      const itemTotal = products.reduce((sum, p) => {
         const val = p.prices[idx]
         return sum + (typeof val === "number" ? val : 0)
       }, 0)
-    )
+      const moveCost = typeof pois[idx]?.distance === "number" ? pois[idx].distance * COST_PER_KM : 0
+      return itemTotal + moveCost
+    })
     const min = Math.min(...totals)
     return totals.findIndex(t => t === min)
   }
 
   return (
-    <div    
+    <div
       className={`absolute top-0 right-0 h-full bg-white shadow-lg transition-transform duration-300 overflow-hidden flex flex-col w-[480px] ${
         isOpen ? "translate-x-0" : "translate-x-full"
       }`}
       style={{ zIndex: 10 }}
     >
-      {/* パネルヘッダー */}
       <div className="flex items-center justify-between p-4 border-b">
         <h2 className="text-lg font-semibold">
           {activeTab === "results" ? `検索結果 (${pois.length})` : "商品比較表"}
@@ -105,7 +86,6 @@ export default function POIPanel({ isOpen, onClose, pois, selectedPoi, onSelectP
         </button>
       </div>
 
-      {/* タブ切り替え */}
       <div className="flex border-b text-sm">
         <button
           onClick={() => setActiveTab("results")}
@@ -121,10 +101,8 @@ export default function POIPanel({ isOpen, onClose, pois, selectedPoi, onSelectP
         </button>
       </div>
 
-      {/* パネル内容 */}
       <div className="flex-grow overflow-auto">
         {activeTab === "results" ? (
-          // 検索結果タブの中身
           selectedPoi ? (
             <div className="p-4">
               <button onClick={() => onSelectPoi(null)} className="flex items-center text-blue-600 mb-4">
@@ -143,15 +121,11 @@ export default function POIPanel({ isOpen, onClose, pois, selectedPoi, onSelectP
                   </span>
                 </div>
               )}
-              <div className="mt-4">
-                <h4 className="font-medium mb-2">座標</h4>
-                <div className="bg-gray-50 p-2 rounded text-sm">
-                  <div>緯度: {selectedPoi.coordinates.lat.toFixed(6)}</div>
-                  <div>経度: {selectedPoi.coordinates.lng.toFixed(6)}</div>
+              {selectedPoi.distance != null && selectedPoi.duration != null && (
+                <div className="mb-3 text-sm text-gray-600">
+                  距離: {selectedPoi.distance}km / 時間: {selectedPoi.duration}分
                 </div>
-              </div>
-
-              {/* 商品比較表に追加ボタン */}
+              )}
               <div className="mt-4">
                 <button
                   onClick={() => handleAddStore(selectedPoi.name)}
@@ -162,7 +136,6 @@ export default function POIPanel({ isOpen, onClose, pois, selectedPoi, onSelectP
               </div>
             </div>
           ) : (
-            // POI一覧
             <div className="divide-y">
               {pois.map((poi) => (
                 <div key={poi.id} className="p-4 hover:bg-gray-50 cursor-pointer" onClick={() => onSelectPoi(poi)}>
@@ -173,15 +146,15 @@ export default function POIPanel({ isOpen, onClose, pois, selectedPoi, onSelectP
                       {poi.category}
                     </span>
                   )}
+                  {(poi.distance != null && poi.duration != null) && (
+                    <p className="text-xs text-gray-500 mt-1">距離: {poi.distance}km / 時間: {poi.duration}分</p>
+                  )}
                 </div>
               ))}
             </div>
           )
         ) : (
-          // 商品比較表タブの中身
           <div className="p-4 text-sm text-gray-700">
-
-            {/* 商品追加フォーム */}
             <div className="mb-4">
               <label className="block text-sm font-medium mb-1">新しい商品名</label>
               <div className="flex gap-2">
@@ -201,7 +174,6 @@ export default function POIPanel({ isOpen, onClose, pois, selectedPoi, onSelectP
               </div>
             </div>
 
-            {/* 商品比較表 */}
             <div className="overflow-auto">
               <table className="w-full border text-sm mb-4">
                 <thead>
@@ -250,29 +222,28 @@ export default function POIPanel({ isOpen, onClose, pois, selectedPoi, onSelectP
               </table>
             </div>
 
-            {/* 各スーパーの合計価格と最安店舗の表示 */}
             <div className="bg-gray-50 p-3 rounded text-sm">
-              <h4 className="font-semibold mb-2">各スーパーの合計</h4>
+              <h4 className="font-semibold mb-2">各スーパーの合計 + 移動コスト</h4>
               {storeNames.map((name, idx) => {
-                const subtotal = products.reduce((sum, p) => {
+                const itemTotal = products.reduce((sum, p) => {
                   const val = p.prices[idx]
                   return sum + (typeof val === "number" ? val : 0)
                 }, 0)
-
+                const moveCost = typeof pois[idx]?.distance === "number" ? pois[idx].distance * COST_PER_KM : 0
+                const total = itemTotal + moveCost
                 return (
                   <div
                     key={name}
-                    className={`${idx === getCheapestIndex() ? "text-green-700 font-bold" : "text-gray-800"}`}
+                    className={`${idx === getCheapestIndexWithGas() ? "text-green-700 font-bold" : "text-gray-800"}`}
                   >
-                    {name}：商品合計 ¥{subtotal}
+                    {name}：商品合計 ¥{itemTotal} + 移動コスト ¥{moveCost.toFixed(0)} = ¥{total.toFixed(0)}
                   </div>
                 )
               })}
               <div className="mt-2 text-blue-700 font-semibold">
-                最も安い店舗: {storeNames[getCheapestIndex()]}
+                最も安い店舗（移動費込）: {storeNames[getCheapestIndexWithGas()] || "-"}
               </div>
             </div>
-
           </div>
         )}
       </div>
