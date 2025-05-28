@@ -1,4 +1,5 @@
 import type { Coordinates, POI, RouteInfo, SearchOptions, CategorySearchFeature } from "@/types/map"
+import type { MapboxIsochroneApiResponse } from "@/types/isochrone"
 
 export class MapService {
   private accessToken: string
@@ -153,6 +154,7 @@ export class MapService {
     })
   }
 
+<<<<<<< HEAD
   calculateSearchBbox(center: Coordinates, radiusKm: number): GeoJSON.Feature<GeoJSON.Polygon> {
     const lat = center.lat
     const lon = center.lng
@@ -174,7 +176,18 @@ export class MapService {
         ],
       },
       properties: {},
+=======
+  async getIsochroneAPI(center: Coordinates, minutes: number, mode: string) {
+    const res = await fetch(
+      `https://api.mapbox.com/isochrone/v1/mapbox/${mode}/${center.lng},${center.lat}?contours_minutes=${minutes}&polygons=true&denoise=1&access_token=${this.accessToken}`
+    )
+
+    const data: MapboxIsochroneApiResponse = await res.json()
+    if (!data.features || data.features.length === 0) {
+      return null
+>>>>>>> 1c5780f2bb1467ef1fe20d5cdc6a18f00023007c
     }
+    return data.features[0]
   }
 }
 

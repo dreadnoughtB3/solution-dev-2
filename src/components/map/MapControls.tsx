@@ -3,17 +3,15 @@
 import type { RouteInfo } from "@/types/map"
 
 interface MapControlsProps {
-  searchRadius: number
-  setSearchRadius: (radius: number) => void
-  onDrawRoute: () => void
+  contourMinute: number
+  setContourMinute: (radius: number) => void
   onSearchPOIs: () => void
   routeInfo: RouteInfo | null
 }
 
 export default function MapControls({
-  searchRadius,
-  setSearchRadius,
-  onDrawRoute,
+  contourMinute,
+  setContourMinute,
   onSearchPOIs,
   routeInfo,
 }: MapControlsProps) {
@@ -22,23 +20,16 @@ export default function MapControls({
       <div className="absolute top-5 left-5 z-10 flex flex-col gap-2.5 bg-gray-800/80 p-3 rounded-lg">
         <div className="flex flex-col gap-2.5">
           <label className="text-white">
-            半径: {searchRadius}km
+            移動時間: {contourMinute}分
             <input
               type="range"
               min={5}
-              max={50}
-              value={searchRadius}
-              onChange={(e) => setSearchRadius(Number(e.target.value))}
+              max={60}
+              value={contourMinute}
+              onChange={(e) => setContourMinute(Number(e.target.value))}
               className="w-full mt-1"
             />
           </label>
-
-          <button
-            onClick={onDrawRoute}
-            className="px-4 py-2.5 bg-blue-600 text-white border-none rounded-md cursor-pointer hover:bg-blue-700 transition-colors"
-          >
-            東京駅までのルートを表示
-          </button>
 
           <button
             onClick={onSearchPOIs}

@@ -6,7 +6,6 @@ import MapboxLanguage from "@mapbox/mapbox-gl-language"
 import "mapbox-gl/dist/mapbox-gl.css"
 // Services
 import { mapService } from "@/services/mapService"
-import { getLocation } from "@/services/geolocation"
 // Components
 import MapControls from "./MapControls"
 import POIPanel from "./POIPanel"
@@ -20,16 +19,21 @@ export default function MapContainer() {
   const mapContainer = useRef<HTMLDivElement | null>(null)
   const markerRef = useRef<mapboxgl.Marker | null>(null)
   const poiMarkers = useRef<mapboxgl.Marker[]>([])
+  const initLocation = {lng: 139.7670516, lat: 35.6811673}
 
   const [map, setMap] = useState<mapboxgl.Map | null>(null)
   const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null)
-  const [searchRadius, setSearchRadius] = useState<number>(15)
+  const [contourMinute, setContourMinute] = useState<number>(10)
   const [pois, setPois] = useState<POI[]>([])
   const [selectedPoi, setSelectedPoi] = useState<POI | null>(null)
   const [isPanelOpen, setIsPanelOpen] = useState<boolean>(false)
+<<<<<<< HEAD
   const [isLoading, setIsLoading] = useState<boolean>(true)
 
   const [destination, setDestination] = useState<Coordinates>({ lng: 139.7670516, lat: 35.6811673 })
+=======
+  const [routingProfile, setRoutingProfile] = useState<string>("driving")
+>>>>>>> 1c5780f2bb1467ef1fe20d5cdc6a18f00023007c
 
   const drawRoute = async () => {
     if (!map || !markerRef.current) return
@@ -38,7 +42,11 @@ export default function MapContainer() {
     const originCoords: Coordinates = { lng: origin.lng, lat: origin.lat }
 
     try {
+<<<<<<< HEAD
       const { route, routeInfo } = await mapService.getRouteWithGeometry(originCoords, destination)
+=======
+      const { route, routeInfo } = await mapService.getRoute(originCoords, initLocation)
+>>>>>>> 1c5780f2bb1467ef1fe20d5cdc6a18f00023007c
       setRouteInfo(routeInfo)
 
       if (map.getSource("route")) {
@@ -80,13 +88,23 @@ export default function MapContainer() {
     const centerCoords: Coordinates = { lng: center.lng, lat: center.lat };
 
     try {
+<<<<<<< HEAD
       drawSearchBbox();
       poiMarkers.current.forEach((m) => m.remove());
       poiMarkers.current = [];
 
+=======
+      // マーカーをクリア
+      poiMarkers.current.forEach((m) => m.remove())
+      poiMarkers.current = []
+
+      await drawIsochroneArea()
+
+      // POIを検索
+>>>>>>> 1c5780f2bb1467ef1fe20d5cdc6a18f00023007c
       const foundPois = await mapService.searchCategory({
         query: "supermarket",
-        radius: searchRadius,
+        radius: 15,
         center: centerCoords,
       });
 
@@ -129,36 +147,41 @@ export default function MapContainer() {
     }
   };
 
-  const drawSearchBbox = () => {
+  const drawIsochroneArea = async () => {
     if (!map || !markerRef.current) return
+
+    if (map.getLayer('isochrone-fill')) map.removeLayer('isochrone-fill');
+    if (map.getSource('isochrones')) map.removeSource('isochrones');
 
     const center = markerRef.current.getLngLat()
     const centerCoords: Coordinates = { lng: center.lng, lat: center.lat }
+    const isochroneGeoJson = await mapService.getIsochroneAPI(centerCoords, contourMinute, routingProfile)
 
-    const geojsonBbox = mapService.calculateSearchBbox(centerCoords, searchRadius)
+    map.addSource('isochrones', {
+      type: 'geojson',
+      data: isochroneGeoJson?.geometry,
+    });
 
-    const source = map.getSource("search-radius")
-    if (source && "setData" in source) {
-      ;(source as mapboxgl.GeoJSONSource).setData(geojsonBbox)
-    } else {
-      map.addSource("search-radius", {
-        type: "geojson",
-        data: geojsonBbox,
-      })
-
-      map.addLayer({
-        id: "search-radius",
-        type: "fill",
-        source: "search-radius",
-        paint: {
-          "fill-color": "#93c5fd",
-          "fill-opacity": 0.3,
-        },
-      })
-    }
+    map.addLayer({
+      id: 'isochrone-fill',
+      type: 'fill',
+      source: 'isochrones',
+      layout: {},
+      paint: {
+        'fill-color': [ // 等時線データに含まれる色プロパティを優先し、なければデフォルト色
+          'case',
+          ['has', 'color'], // 'color' プロパティがある場合
+          ['get', 'color'], // その色を使用
+          '#007cbf'         // なければデフォルト色
+        ],
+        'fill-opacity': 0.3, // 透明度
+      },
+    });
   }
 
+  // 地図描画
   useEffect(() => {
+<<<<<<< HEAD
     if (map) return
 
     const fetchLocationAndSetLoading = async () => {
@@ -176,9 +199,12 @@ export default function MapContainer() {
     fetchLocationAndSetLoading();
 
     if (!isLoading) {
+=======
+    if (!map) {
+>>>>>>> 1c5780f2bb1467ef1fe20d5cdc6a18f00023007c
       const initMap = new mapboxgl.Map({
         container: mapContainer.current!,
-        center: [destination.lng, destination.lat],
+        center: [initLocation.lng, initLocation.lat],
         zoom: 12,
         style: "mapbox://styles/mapbox/streets-v12",
       });
@@ -186,7 +212,11 @@ export default function MapContainer() {
       const language = new MapboxLanguage({ defaultLanguage: "ja" });
       initMap.addControl(language);
 
+<<<<<<< HEAD
       const startMarker = new mapboxgl.Marker({ draggable: true }).setLngLat([destination.lng, destination.lat]).addTo(initMap);
+=======
+      const startMarker = new mapboxgl.Marker({ draggable: true }).setLngLat([initLocation.lng, initLocation.lat]).addTo(initMap)
+>>>>>>> 1c5780f2bb1467ef1fe20d5cdc6a18f00023007c
 
       markerRef.current = startMarker;
 
@@ -195,6 +225,7 @@ export default function MapContainer() {
         initMap.resize();
       });
     }
+<<<<<<< HEAD
   }, [isLoading]);
 
   useEffect(() => {
@@ -205,11 +236,25 @@ export default function MapContainer() {
       drawSearchBbox();
     }
   }, [searchRadius]);
+=======
+  }, [])
+
+  // 検索範囲描画
+  // useEffect(() => {
+  //   if (!map || !markerRef.current) return
+
+  //   const source = map.getSource("search-radius")
+  //   if (source) {
+  //     drawSearchBbox()
+  //   }
+  // }, [searchRadius])
+>>>>>>> 1c5780f2bb1467ef1fe20d5cdc6a18f00023007c
 
   const togglePanel = () => {
     setIsPanelOpen(!isPanelOpen);
   }
 
+<<<<<<< HEAD
   if (isLoading) {
     return <div>Now Loading...</div>;
   } else {
@@ -239,4 +284,34 @@ export default function MapContainer() {
       </div>
     );
   }
+=======
+  return (
+    <div className="relative w-full h-screen">
+      {/* マップは常に画面全体を占める */}
+      <div className="absolute inset-0">
+        <div ref={mapContainer} className="w-full h-full" />
+      </div>
+
+      {/* マップコントロール */}
+      <MapControls
+        contourMinute={contourMinute}
+        setContourMinute={setContourMinute}
+        onSearchPOIs={searchPOIs}
+        routeInfo={routeInfo}
+      />
+
+      {/* パネルトグルボタン - 常に表示 */}
+      <PanelToggle isOpen={isPanelOpen} onClick={togglePanel} />
+
+      {/* POIパネル - マップの上にオーバーレイ */}
+      <POIPanel
+        isOpen={isPanelOpen}
+        onClose={() => setIsPanelOpen(false)}
+        pois={pois}
+        selectedPoi={selectedPoi}
+        onSelectPoi={setSelectedPoi}
+      />
+    </div>
+  )
+>>>>>>> 1c5780f2bb1467ef1fe20d5cdc6a18f00023007c
 }

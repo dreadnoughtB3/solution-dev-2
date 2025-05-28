@@ -40,5 +40,3 @@ export interface CategorySearchFeature {
     place_type?: string[]
   }
 }
-  
-  
