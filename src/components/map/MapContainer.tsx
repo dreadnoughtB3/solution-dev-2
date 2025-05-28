@@ -19,7 +19,7 @@ export default function MapContainer() {
   const mapContainer = useRef<HTMLDivElement | null>(null)
   const markerRef = useRef<mapboxgl.Marker | null>(null)
   const poiMarkers = useRef<mapboxgl.Marker[]>([])
-  const initLocation = {lng: 139.7670516, lat: 35.6811673}
+  const initLocation = {lng: 139.6969226, lat: 35.691595}
 
   const [map, setMap] = useState<mapboxgl.Map | null>(null)
   const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null)
@@ -294,8 +294,10 @@ export default function MapContainer() {
 
       {/* マップコントロール */}
       <MapControls
+        routingProfle={routingProfile}
         contourMinute={contourMinute}
         setContourMinute={setContourMinute}
+        setRoutingProfile={setRoutingProfile}
         onSearchPOIs={searchPOIs}
         routeInfo={routeInfo}
       />
